@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String               @id @default(cuid())
+  name               String
+  email              String               @unique
+  password           String
+  role               String               @default("restaurant")
+  subscriptionStatus SubscriptionStatus   @default(PENDING)
+  restaurant         Restaurant?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model Restaurant {
+  id                     String         @id @default(cuid())
+  ownerId                String         @unique
+  owner                  User           @relation(fields: [ownerId], references: [id])
+  name                   String
+  slug                   String         @unique
+  address                String?
+  whatsappNumber         String
+  currency               String         @default("PKR")
+  defaultLocale          String         @default("en")
+  logoUrl                String?
+  categories             MenuCategory[]
+  menuItems              MenuItem[]
+  tables                 Table[]
+  subscriptions          Subscription[]
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+}
+
+model MenuCategory {
+  id           String      @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  items        MenuItem[]
+}
+
+model MenuItem {
+  id           String        @id @default(cuid())
+  restaurantId String
+  categoryId   String
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category     MenuCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name         String
+  description  String
+  price        Decimal       @db.Decimal(10, 2)
+  imageUrl     String?
+  available    Boolean       @default(true)
+  tags         String[]
+}
+
+model Table {
+  id           String      @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  number       Int
+}
+
+model Subscription {
+  id                      String               @id @default(cuid())
+  restaurantId            String
+  restaurant              Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  paddleCustomerId        String?
+  paddleSubscriptionId    String?              @unique
+  status                  SubscriptionStatus   @default(PENDING)
+  priceId                 String?
+  nextBilledAt            DateTime?
+  createdAt               DateTime             @default(now())
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  CANCELED
+  PAST_DUE
+}
