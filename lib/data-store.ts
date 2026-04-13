@@ -1,28 +1,227 @@
-import { promises as fs } from "fs";
-import path from "path";
-import { seedData } from "@/data/seed";
+import "server-only";
+import { PrismaClient } from "@prisma/client";
 import { AppData, MenuCategory, MenuItem, Restaurant, Table, User } from "@/lib/types";
-import { createId, slugify } from "@/lib/utils";
+import { slugify } from "@/lib/utils";
 
-const dataPath = path.join(process.cwd(), "data", "runtime.json");
+const { PrismaPg } = require("@prisma/adapter-pg") as {
+  PrismaPg: new (pool: unknown) => unknown;
+};
+const { Pool } = require("pg") as {
+  Pool: new (options: { connectionString: string }) => unknown;
+};
 
-async function ensureDataFile() {
-  try {
-    await fs.access(dataPath);
-  } catch {
-    await fs.mkdir(path.dirname(dataPath), { recursive: true });
-    await fs.writeFile(dataPath, JSON.stringify(seedData, null, 2), "utf8");
-  }
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+  prismaPool?: unknown;
+};
+
+const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL or DIRECT_URL must be set for Prisma.");
+}
+
+const pool =
+  globalForPrisma.prismaPool ??
+  new Pool({
+    connectionString
+  });
+
+const adapter = new PrismaPg(pool) as any;
+
+const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    adapter,
+    log: ["error"]
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+  globalForPrisma.prismaPool = pool;
+}
+
+function mapSubscriptionStatus(status: string): User["subscriptionStatus"] {
+  return status.toLowerCase() === "active" ? "active" : "pending";
+}
+
+function mapUser(record: {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+  subscriptionStatus: string;
+  restaurant?: { id: string } | null;
+}): User {
+  return {
+    id: record.id,
+    name: record.name,
+    email: record.email,
+    password: record.password,
+    role: record.role as User["role"],
+    restaurantId: record.restaurant?.id ?? "",
+    subscriptionStatus: mapSubscriptionStatus(record.subscriptionStatus)
+  };
+}
+
+function mapRestaurant(record: {
+  id: string;
+  ownerId: string;
+  name: string;
+  slug: string;
+  address: string | null;
+  whatsappNumber: string;
+  currency: string;
+  defaultLocale: string;
+  logoUrl: string | null;
+}): Restaurant {
+  return {
+    id: record.id,
+    ownerId: record.ownerId,
+    name: record.name,
+    slug: record.slug,
+    address: record.address ?? "",
+    whatsappNumber: record.whatsappNumber,
+    currency: record.currency,
+    defaultLocale: record.defaultLocale as Restaurant["defaultLocale"],
+    logoUrl: record.logoUrl ?? undefined
+  };
+}
+
+function mapCategory(record: { id: string; restaurantId: string; name: string }): MenuCategory {
+  return {
+    id: record.id,
+    restaurantId: record.restaurantId,
+    name: record.name
+  };
+}
+
+function mapMenuItem(record: {
+  id: string;
+  restaurantId: string;
+  categoryId: string;
+  name: string;
+  description: string;
+  price: { toNumber(): number };
+  imageUrl: string | null;
+  available: boolean;
+  tags: string[];
+}): MenuItem {
+  return {
+    id: record.id,
+    restaurantId: record.restaurantId,
+    categoryId: record.categoryId,
+    name: record.name,
+    description: record.description,
+    price: record.price.toNumber(),
+    imageUrl: record.imageUrl ?? undefined,
+    available: record.available,
+    tags: record.tags
+  };
+}
+
+function mapTable(record: { id: string; restaurantId: string; name: string; number: number }): Table {
+  return {
+    id: record.id,
+    restaurantId: record.restaurantId,
+    name: record.name,
+    number: record.number
+  };
 }
 
 export async function readData(): Promise<AppData> {
-  await ensureDataFile();
-  const raw = await fs.readFile(dataPath, "utf8");
-  return JSON.parse(raw) as AppData;
+  const [users, restaurants, categories, menuItems, tables] = await Promise.all([
+    prisma.user.findMany({
+      include: {
+        restaurant: {
+          select: {
+            id: true
+          }
+        }
+      }
+    }),
+    prisma.restaurant.findMany(),
+    prisma.menuCategory.findMany(),
+    prisma.menuItem.findMany(),
+    prisma.table.findMany()
+  ]);
+
+  return {
+    users: users.map(mapUser),
+    restaurants: restaurants.map(mapRestaurant),
+    categories: categories.map(mapCategory),
+    menuItems: menuItems.map(mapMenuItem),
+    tables: tables.map(mapTable)
+  };
 }
 
 export async function writeData(data: AppData) {
-  await fs.writeFile(dataPath, JSON.stringify(data, null, 2), "utf8");
+  await prisma.$transaction(async (tx) => {
+    await tx.subscription.deleteMany();
+    await tx.menuItem.deleteMany();
+    await tx.menuCategory.deleteMany();
+    await tx.table.deleteMany();
+    await tx.restaurant.deleteMany();
+    await tx.user.deleteMany();
+
+    for (const user of data.users) {
+      await tx.user.create({
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          password: user.password,
+          role: user.role,
+          subscriptionStatus: user.subscriptionStatus.toUpperCase() as "PENDING" | "ACTIVE"
+        }
+      });
+    }
+
+    for (const restaurant of data.restaurants) {
+      await tx.restaurant.create({
+        data: {
+          id: restaurant.id,
+          ownerId: restaurant.ownerId,
+          name: restaurant.name,
+          slug: restaurant.slug,
+          address: restaurant.address,
+          whatsappNumber: restaurant.whatsappNumber,
+          currency: restaurant.currency,
+          defaultLocale: restaurant.defaultLocale,
+          logoUrl: restaurant.logoUrl
+        }
+      });
+    }
+
+    for (const category of data.categories) {
+      await tx.menuCategory.create({
+        data: category
+      });
+    }
+
+    for (const item of data.menuItems) {
+      await tx.menuItem.create({
+        data: {
+          id: item.id,
+          restaurantId: item.restaurantId,
+          categoryId: item.categoryId,
+          name: item.name,
+          description: item.description,
+          price: item.price,
+          imageUrl: item.imageUrl,
+          available: item.available,
+          tags: item.tags
+        }
+      });
+    }
+
+    for (const table of data.tables) {
+      await tx.table.create({
+        data: table
+      });
+    }
+  });
 }
 
 export async function createPendingRestaurant(input: {
@@ -32,161 +231,227 @@ export async function createPendingRestaurant(input: {
   restaurantName: string;
   whatsappNumber: string;
 }) {
-  const data = await readData();
-  const existing = data.users.find((user) => user.email.toLowerCase() === input.email.toLowerCase());
+  const existing = await prisma.user.findUnique({
+    where: { email: input.email.toLowerCase() },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  });
 
   if (existing) {
-    return existing;
+    return mapUser(existing);
   }
 
-  const restaurantId = createId("rest");
-  const userId = createId("user");
-  const slugBase = slugify(input.restaurantName) || createId("restaurant");
-  const duplicateCount = data.restaurants.filter((restaurant) => restaurant.slug.startsWith(slugBase)).length;
-  const slug = duplicateCount ? `${slugBase}-${duplicateCount + 1}` : slugBase;
+  const slugBase = slugify(input.restaurantName) || "restaurant";
+  let slug = slugBase;
+  let counter = 2;
 
-  const user: User = {
-    id: userId,
-    name: input.ownerName,
-    email: input.email,
-    password: input.password,
-    role: "restaurant",
-    restaurantId,
-    subscriptionStatus: "pending"
-  };
+  while (await prisma.restaurant.findUnique({ where: { slug } })) {
+    slug = `${slugBase}-${counter}`;
+    counter += 1;
+  }
 
-  const restaurant: Restaurant = {
-    id: restaurantId,
-    ownerId: userId,
-    name: input.restaurantName,
-    slug,
-    address: "",
-    whatsappNumber: input.whatsappNumber,
-    currency: "PKR",
-    defaultLocale: "en"
-  };
+  const created = await prisma.user.create({
+    data: {
+      name: input.ownerName,
+      email: input.email.toLowerCase(),
+      password: input.password,
+      role: "restaurant",
+      subscriptionStatus: "PENDING",
+      restaurant: {
+        create: {
+          name: input.restaurantName,
+          slug,
+          address: "",
+          whatsappNumber: input.whatsappNumber,
+          currency: "PKR",
+          defaultLocale: "en"
+        }
+      }
+    },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  });
 
-  data.users.push(user);
-  data.restaurants.push(restaurant);
-  await writeData(data);
-  return user;
+  return mapUser(created);
 }
 
 export async function activateSubscription(userId: string) {
-  const data = await readData();
-  const user = data.users.find((entry) => entry.id === userId);
-  if (!user) {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  });
+
+  if (!existing) {
     return null;
   }
 
-  user.subscriptionStatus = "active";
-  await writeData(data);
-  return user;
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { subscriptionStatus: "ACTIVE" },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  });
+
+  return mapUser(updated);
 }
 
 export async function getUserById(userId: string) {
-  const data = await readData();
-  return data.users.find((entry) => entry.id === userId) ?? null;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  });
+
+  return user ? mapUser(user) : null;
 }
 
 export async function authenticateUser(email: string, password: string) {
-  const data = await readData();
-  return (
-    data.users.find(
-      (user) => user.email.toLowerCase() === email.toLowerCase() && user.password === password && user.subscriptionStatus === "active"
-    ) ?? null
-  );
+  const user = await prisma.user.findFirst({
+    where: {
+      email: email.toLowerCase(),
+      password,
+      subscriptionStatus: "ACTIVE"
+    },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  });
+
+  return user ? mapUser(user) : null;
 }
 
 export async function getRestaurantBundleByUserId(userId: string) {
-  const data = await readData();
-  const user = data.users.find((entry) => entry.id === userId);
-  if (!user) {
-    return null;
-  }
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      restaurant: {
+        include: {
+          categories: true,
+          menuItems: true,
+          tables: true
+        }
+      }
+    }
+  });
 
-  const restaurant = data.restaurants.find((entry) => entry.id === user.restaurantId);
-  if (!restaurant) {
+  if (!user?.restaurant) {
     return null;
   }
 
   return {
-    user,
-    restaurant,
-    categories: data.categories.filter((entry) => entry.restaurantId === restaurant.id),
-    menuItems: data.menuItems.filter((entry) => entry.restaurantId === restaurant.id),
-    tables: data.tables.filter((entry) => entry.restaurantId === restaurant.id)
+    user: mapUser(user),
+    restaurant: mapRestaurant(user.restaurant),
+    categories: user.restaurant.categories.map(mapCategory),
+    menuItems: user.restaurant.menuItems.map(mapMenuItem),
+    tables: user.restaurant.tables.map(mapTable)
   };
 }
 
 export async function getRestaurantBySlug(slug: string) {
-  const data = await readData();
-  const restaurant = data.restaurants.find((entry) => entry.slug === slug);
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug },
+    include: {
+      categories: true,
+      menuItems: true,
+      tables: true
+    }
+  });
+
   if (!restaurant) {
     return null;
   }
 
   return {
-    restaurant,
-    categories: data.categories.filter((entry) => entry.restaurantId === restaurant.id),
-    menuItems: data.menuItems.filter((entry) => entry.restaurantId === restaurant.id),
-    tables: data.tables.filter((entry) => entry.restaurantId === restaurant.id)
+    restaurant: mapRestaurant(restaurant),
+    categories: restaurant.categories.map(mapCategory),
+    menuItems: restaurant.menuItems.map(mapMenuItem),
+    tables: restaurant.tables.map(mapTable)
   };
 }
 
 export async function addCategory(restaurantId: string, name: string) {
-  const data = await readData();
-  const category: MenuCategory = {
-    id: createId("cat"),
-    restaurantId,
-    name
-  };
-  data.categories.push(category);
-  await writeData(data);
-  return category;
+  const category = await prisma.menuCategory.create({
+    data: {
+      restaurantId,
+      name
+    }
+  });
+
+  return mapCategory(category);
 }
 
-export async function addMenuItem(
-  restaurantId: string,
-  input: Omit<MenuItem, "id" | "restaurantId">
-) {
-  const data = await readData();
-  const item: MenuItem = {
-    id: createId("item"),
-    restaurantId,
-    ...input
-  };
-  data.menuItems.push(item);
-  await writeData(data);
-  return item;
+export async function addMenuItem(restaurantId: string, input: Omit<MenuItem, "id" | "restaurantId">) {
+  const item = await prisma.menuItem.create({
+    data: {
+      restaurantId,
+      categoryId: input.categoryId,
+      name: input.name,
+      description: input.description,
+      price: input.price,
+      imageUrl: input.imageUrl,
+      available: input.available,
+      tags: input.tags
+    }
+  });
+
+  return mapMenuItem(item);
 }
 
 export async function addTable(restaurantId: string, input: Pick<Table, "name" | "number">) {
-  const data = await readData();
-  const table: Table = {
-    id: createId("table"),
-    restaurantId,
-    ...input
-  };
-  data.tables.push(table);
-  await writeData(data);
-  return table;
+  const table = await prisma.table.create({
+    data: {
+      restaurantId,
+      name: input.name,
+      number: input.number
+    }
+  });
+
+  return mapTable(table);
 }
 
 export async function updateRestaurantSettings(
   restaurantId: string,
   input: Pick<Restaurant, "address" | "currency" | "whatsappNumber" | "defaultLocale">
 ) {
-  const data = await readData();
-  const restaurant = data.restaurants.find((entry) => entry.id === restaurantId);
-  if (!restaurant) {
-    return null;
-  }
+  const restaurant = await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: {
+      address: input.address,
+      currency: input.currency,
+      whatsappNumber: input.whatsappNumber,
+      defaultLocale: input.defaultLocale
+    }
+  }).catch(() => null);
 
-  restaurant.address = input.address;
-  restaurant.currency = input.currency;
-  restaurant.whatsappNumber = input.whatsappNumber;
-  restaurant.defaultLocale = input.defaultLocale;
-  await writeData(data);
-  return restaurant;
+  return restaurant ? mapRestaurant(restaurant) : null;
 }
