@@ -21,6 +21,39 @@ async function submitJson(url: string, body: Record<string, unknown>) {
   return (await response.json()) as ActionState;
 }
 
+function PasswordField({
+  name,
+  placeholder,
+  minLength
+}: {
+  name: string;
+  placeholder: string;
+  minLength?: number;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="relative">
+      <input
+        name={name}
+        type={visible ? "text" : "password"}
+        placeholder={placeholder}
+        required
+        minLength={minLength}
+        className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 pr-14"
+      />
+      <button
+        type="button"
+        aria-label={visible ? "Hide password" : "Show password"}
+        onClick={() => setVisible((current) => !current)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-semibold text-[var(--muted)]"
+      >
+        {visible ? "Hide" : "Show"}
+      </button>
+    </div>
+  );
+}
+
 export function SignupForm({ locale }: { locale: string }) {
   const [state, setState] = useState<ActionState>({});
   const [pending, startTransition] = useTransition();
@@ -56,14 +89,7 @@ export function SignupForm({ locale }: { locale: string }) {
         className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
       />
       <input name="email" type="email" placeholder="Email" required className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3" />
-      <input
-        name="password"
-        type="password"
-        placeholder="Password"
-        required
-        minLength={6}
-        className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-      />
+      <PasswordField name="password" placeholder="Password" minLength={6} />
       <input
         name="whatsappNumber"
         placeholder="923001234567"
@@ -104,13 +130,7 @@ export function LoginForm({ locale }: { locale: string }) {
       }}
     >
       <input name="email" type="email" placeholder="Email" required className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3" />
-      <input
-        name="password"
-        type="password"
-        placeholder="Password"
-        required
-        className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-      />
+      <PasswordField name="password" placeholder="Password" />
       <button disabled={pending} className="w-full rounded-2xl bg-[var(--brand)] px-4 py-3 font-semibold text-white">
         {pending ? "Please wait..." : "Login"}
       </button>

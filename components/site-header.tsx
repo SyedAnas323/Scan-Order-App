@@ -8,7 +8,14 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   return (
     <header className="shell flex items-center justify-between py-6">
       <Link href={`/${locale}`} className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand)] text-lg font-bold text-white">S</div>
+        <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-[1.4rem] bg-[linear-gradient(145deg,#c55b1f_0%,#8b300f_100%)] shadow-[0_14px_30px_rgba(139,48,15,0.28)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.25),transparent_45%)]" />
+          <div className="relative h-8 w-8">
+            <div className="absolute left-0 top-1 h-5 w-5 rounded-full border-[3px] border-white/95" />
+            <div className="absolute right-0 top-0 h-4 w-4 rounded-full bg-[var(--accent)]" />
+            <div className="absolute bottom-0 left-2 h-3 w-4 rounded-t-full border-t-[3px] border-white/95" />
+          </div>
+        </div>
         <div>
           <div className="text-lg font-bold">{t.common.appName}</div>
           <div className="text-sm text-[var(--muted)]">QR menus + WhatsApp orders</div>

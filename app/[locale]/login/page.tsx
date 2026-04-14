@@ -14,7 +14,6 @@ export default async function LoginPage({ params }: { params: Promise<{ locale: 
         <div className="mx-auto max-w-xl glass rounded-[2rem] p-8">
           <div className="pill">{t.auth.welcome}</div>
           <h1 className="mt-5 text-4xl font-bold">{t.auth.loginTitle}</h1>
-          <p className="mt-3 text-[var(--muted)]">Demo login: demo@sofraqr.com / demo1234</p>
           <div className="mt-6">
             <LoginForm locale={locale} />
           </div>
