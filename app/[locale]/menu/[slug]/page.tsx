@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PublicMenu } from "@/components/public-menu";
 import { getRestaurantBySlug } from "@/lib/data-store";
 import { getTranslations, type Locale } from "@/lib/i18n";
+import { Table } from "@/lib/types";
 
 export default async function PublicMenuPage({
   params,
@@ -19,7 +20,7 @@ export default async function PublicMenuPage({
 
   const safeBundle = bundle;
 
-  const activeTable = safeBundle.tables.find((entry) => entry.id === tableId);
+  const activeTable = safeBundle.tables.find((entry: Table) => entry.id === tableId);
   const t = getTranslations(locale);
 
   return (
