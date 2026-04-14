@@ -15,7 +15,24 @@ const globalForPrisma = globalThis as unknown as {
   prismaPool?: unknown;
 };
 
-const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
+function normalizeConnectionString(value?: string) {
+  if (!value) {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+
+  return trimmed;
+}
+
+// On Vercel/serverless, prefer the pooled connection string.
+const connectionString = normalizeConnectionString(process.env.DATABASE_URL) || normalizeConnectionString(process.env.DIRECT_URL);
 
 if (!connectionString) {
   throw new Error("DATABASE_URL or DIRECT_URL must be set for Prisma.");
