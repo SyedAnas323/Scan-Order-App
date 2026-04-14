@@ -19,7 +19,7 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
           [t.dashboard.onboardingDone, bundle.user.subscriptionStatus],
           [t.dashboard.menuItems, String(bundle.menuItems.length)],
           [t.dashboard.tablesCount, String(bundle.tables.length)]
-        ].map(([label, value]) => (
+        ].map(([label, value]: [string, string]) => (
           <article key={label} className="glass rounded-[2rem] p-5">
             <div className="text-sm uppercase tracking-[0.25em] text-[var(--muted)]">{label}</div>
             <div className="mt-3 text-3xl font-bold">{value}</div>

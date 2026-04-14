@@ -32,7 +32,7 @@ export default async function DashboardTablesPage({ params }: { params: Promise<
         </div>
       </section>
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {qrEntries.map((entry) => (
+        {qrEntries.map((entry: { table: Table; url: string; qr: string }) => (
           <article key={entry.table.id} className="glass rounded-[2rem] p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
