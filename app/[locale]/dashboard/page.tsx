@@ -11,15 +11,16 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
     return null;
   }
   const t = getTranslations(locale);
+  const summaryCards: Array<[string, string]> = [
+    [t.dashboard.onboardingDone, bundle.user.subscriptionStatus],
+    [t.dashboard.menuItems, String(bundle.menuItems.length)],
+    [t.dashboard.tablesCount, String(bundle.tables.length)]
+  ];
 
   return (
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-3">
-        {[
-          [t.dashboard.onboardingDone, bundle.user.subscriptionStatus],
-          [t.dashboard.menuItems, String(bundle.menuItems.length)],
-          [t.dashboard.tablesCount, String(bundle.tables.length)]
-        ].map(([label, value]: [string, string]) => (
+        {summaryCards.map(([label, value]) => (
           <article key={label} className="glass rounded-[2rem] p-5">
             <div className="text-sm uppercase tracking-[0.25em] text-[var(--muted)]">{label}</div>
             <div className="mt-3 text-3xl font-bold">{value}</div>
