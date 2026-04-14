@@ -4,6 +4,7 @@ import { AddTableForm } from "@/components/dashboard-forms";
 import { requireSession } from "@/lib/auth";
 import { getRestaurantBundleByUserId } from "@/lib/data-store";
 import { generateQrDataUrl } from "@/lib/qr";
+import { Table } from "@/lib/types";
 
 export default async function DashboardTablesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -15,7 +16,7 @@ export default async function DashboardTablesPage({ params }: { params: Promise<
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const qrEntries = await Promise.all(
-    bundle.tables.map(async (table) => {
+    bundle.tables.map(async (table: Table) => {
       const url = `${appUrl}/${locale}/menu/${bundle.restaurant.slug}?table=${table.id}`;
       return { table, url, qr: await generateQrDataUrl(url) };
     })
