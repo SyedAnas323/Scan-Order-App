@@ -2,6 +2,7 @@ import Image from "next/image";
 import { AddCategoryForm, AddMenuItemForm } from "@/components/dashboard-forms";
 import { requireSession } from "@/lib/auth";
 import { getRestaurantBundleByUserId } from "@/lib/data-store";
+import { MenuCategory, MenuItem } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 
 export default async function DashboardMenuPage() {
@@ -26,8 +27,8 @@ export default async function DashboardMenuPage() {
         </div>
       </section>
       <section className="space-y-4">
-        {bundle.categories.map((category) => {
-          const items = bundle.menuItems.filter((item) => item.categoryId === category.id);
+        {bundle.categories.map((category: MenuCategory) => {
+          const items = bundle.menuItems.filter((item: MenuItem) => item.categoryId === category.id);
           return (
             <article key={category.id} className="glass rounded-[2rem] p-6">
               <div className="flex items-center justify-between gap-4">
@@ -36,7 +37,7 @@ export default async function DashboardMenuPage() {
               </div>
               <div className="mt-4 grid gap-4">
                 {items.length ? (
-                  items.map((item) => (
+                  items.map((item: MenuItem) => (
                     <div key={item.id} className="grid gap-4 rounded-[1.5rem] bg-white/75 p-4 md:grid-cols-[120px_1fr_auto] md:items-center">
                       <div className="relative min-h-28 overflow-hidden rounded-[1.2rem]">
                         {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" /> : <div className="flex h-full items-center justify-center bg-[var(--accent)]/30 font-semibold">{item.name}</div>}
