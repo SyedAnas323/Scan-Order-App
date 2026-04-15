@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SessionPayload } from "@/lib/types";
+import { getUserById } from "@/lib/data-store";
 
 const cookieName = "sofraqr_session";
 
@@ -63,4 +64,15 @@ export async function requireSession(): Promise<SessionPayload> {
     redirect("/en/login");
   }
   return session;
+}
+
+export async function requireUser() {
+  const session = await requireSession();
+  const user = await getUserById(session.userId);
+
+  if (!user) {
+    redirect("/en/login");
+  }
+
+  return { session, user };
 }

@@ -24,11 +24,14 @@ export function SiteHeader({ locale }: { locale: Locale }) {
 
       <div className="flex items-center gap-3">
         <LanguageSwitcher currentLocale={locale} />
+        <Link href={`/${locale}/order`} className="rounded-full border border-[var(--border)] bg-white/85 px-4 py-2 text-sm font-semibold">
+          Order Now
+        </Link>
         <Link href={`/${locale}/login`} className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold">
           {t.common.login}
         </Link>
         <Link href={`/${locale}/signup`} className="rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white">
-          {t.common.getStarted}
+          {t.common.signup}
         </Link>
       </div>
     </header>

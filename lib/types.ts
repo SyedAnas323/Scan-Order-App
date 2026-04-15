@@ -85,9 +85,9 @@ export type User = {
   name: string;
   email: string;
   password: string;
-  role: "restaurant" | "super_admin";
+  role: "restaurant";
   restaurantId: string;
-  subscriptionStatus: "pending" | "active";
+  subscriptionStatus: "pending" | "active" | "canceled";
 };
 
 export type Restaurant = {
@@ -130,6 +130,53 @@ export type Table = {
 export type SessionPayload = {
   userId: string;
   restaurantId: string;
+};
+
+export type RestaurantOwnerRequest = {
+  user: User;
+  restaurant: Restaurant | null;
+  createdAt: string;
+};
+
+export type OrderStatus = "pending" | "completed" | "canceled";
+
+export type AdminOrderItem = {
+  id: string;
+  menuItemName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+};
+
+export type AdminOrder = {
+  id: string;
+  restaurantId: string;
+  restaurantName: string;
+  tableName?: string;
+  customerName: string;
+  status: OrderStatus;
+  totalAmount: number;
+  source: string;
+  createdAt: string;
+  items: AdminOrderItem[];
+};
+
+export type AdminActivity = {
+  id: string;
+  actorType: "admin" | "restaurant_owner" | "customer";
+  actorName: string;
+  action: string;
+  details: string;
+  restaurantName?: string;
+  createdAt: string;
+};
+
+export type AdminDashboardData = {
+  signupRequests: RestaurantOwnerRequest[];
+  recentOrders: AdminOrder[];
+  recentActivity: AdminActivity[];
+  onlineOwners: Array<{ id: string; name: string; restaurantName?: string; lastSeenAt: string }>;
+  onlineCustomers: Array<{ id: string; name: string; restaurantName?: string; lastSeenAt: string }>;
 };
 
 export type AppData = {

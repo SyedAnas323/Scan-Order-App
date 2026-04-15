@@ -1,6 +1,18 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { PrismaClient } from "@prisma/client";
-import { AppData, MenuCategory, MenuItem, Restaurant, Table, User } from "@/lib/types";
+import {
+  AdminActivity,
+  AdminDashboardData,
+  AdminOrder,
+  AppData,
+  MenuCategory,
+  MenuItem,
+  Restaurant,
+  RestaurantOwnerRequest,
+  Table,
+  User
+} from "@/lib/types";
 import { slugify } from "@/lib/utils";
 
 const { PrismaPg } = require("@prisma/adapter-pg") as {
@@ -53,13 +65,37 @@ const prisma =
     log: ["error"]
   });
 
+const prismaUnsafe = prisma as any;
+
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
   globalForPrisma.prismaPool = pool;
 }
 
 function mapSubscriptionStatus(status: string): User["subscriptionStatus"] {
-  return status.toLowerCase() === "active" ? "active" : "pending";
+  const normalized = status.toLowerCase();
+
+  if (normalized === "active") {
+    return "active";
+  }
+
+  if (normalized === "canceled" || normalized === "past_due") {
+    return "canceled";
+  }
+
+  return "pending";
+}
+
+function toPrismaSubscriptionStatus(status: User["subscriptionStatus"]): "PENDING" | "ACTIVE" | "CANCELED" | "PAST_DUE" {
+  if (status === "active") {
+    return "ACTIVE";
+  }
+
+  if (status === "canceled") {
+    return "CANCELED";
+  }
+
+  return "PENDING";
 }
 
 function mapUser(record: {
@@ -147,6 +183,39 @@ function mapTable(record: { id: string; restaurantId: string; name: string; numb
   };
 }
 
+function mapAdminOrder(record: any): AdminOrder {
+  return {
+    id: record.id,
+    restaurantId: record.restaurantId,
+    restaurantName: record.restaurant?.name ?? "Unknown restaurant",
+    tableName: record.table?.name ?? undefined,
+    customerName: record.customerName,
+    status: record.status.toLowerCase(),
+    totalAmount: typeof record.totalAmount?.toNumber === "function" ? record.totalAmount.toNumber() : Number(record.totalAmount ?? 0),
+    source: record.source,
+    createdAt: record.createdAt.toISOString(),
+    items: (record.items ?? []).map((item: any) => ({
+      id: item.id,
+      menuItemName: item.menuItemName,
+      quantity: item.quantity,
+      unitPrice: typeof item.unitPrice?.toNumber === "function" ? item.unitPrice.toNumber() : Number(item.unitPrice ?? 0),
+      lineTotal: typeof item.lineTotal?.toNumber === "function" ? item.lineTotal.toNumber() : Number(item.lineTotal ?? 0)
+    }))
+  };
+}
+
+function mapAdminActivity(record: any): AdminActivity {
+  return {
+    id: record.id,
+    actorType: record.actorType,
+    actorName: record.actorName,
+    action: record.action,
+    details: record.details,
+    restaurantName: record.restaurant?.name ?? undefined,
+    createdAt: record.createdAt.toISOString()
+  };
+}
+
 export async function readData(): Promise<AppData> {
   const [users, restaurants, categories, menuItems, tables] = await Promise.all([
     prisma.user.findMany({
@@ -190,7 +259,7 @@ export async function writeData(data: AppData) {
           email: user.email,
           password: user.password,
           role: user.role,
-          subscriptionStatus: user.subscriptionStatus.toUpperCase() as "PENDING" | "ACTIVE"
+          subscriptionStatus: toPrismaSubscriptionStatus(user.subscriptionStatus)
         }
       });
     }
@@ -299,6 +368,14 @@ export async function createPendingRestaurant(input: {
     }
   });
 
+  await logAdminActivity({
+    actorType: "restaurant_owner",
+    actorName: input.ownerName,
+    action: "signup_request",
+    details: `${input.ownerName} created a signup request for ${input.restaurantName}.`,
+    restaurantId: created.restaurant?.id
+  });
+
   return mapUser(created);
 }
 
@@ -364,7 +441,408 @@ export async function authenticateUser(email: string, password: string) {
     }
   });
 
+  if (user) {
+    await logAdminActivity({
+      actorType: "restaurant_owner",
+      actorName: user.name,
+      action: "login",
+      details: `${user.name} logged into the platform.`,
+      restaurantId: user.restaurant?.id ?? undefined,
+      userId: user.id
+    });
+  }
+
   return user ? mapUser(user) : null;
+}
+
+export async function getRestaurantOwnerRequests(): Promise<RestaurantOwnerRequest[]> {
+  const users = await prisma.user.findMany({
+    where: {
+      role: "restaurant"
+    },
+    include: {
+      restaurant: true
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
+  return users.map((record) => ({
+    user: mapUser(record),
+    restaurant: record.restaurant ? mapRestaurant(record.restaurant) : null,
+    createdAt: record.createdAt.toISOString()
+  }));
+}
+
+export async function getAdminUsers() {
+  const users = await prisma.user.findMany({
+    include: {
+      restaurant: true
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
+  return users.map((user) => ({
+    user: mapUser(user),
+    restaurant: user.restaurant ? mapRestaurant(user.restaurant) : null,
+    createdAt: user.createdAt.toISOString()
+  }));
+}
+
+export async function getAdminRestaurants() {
+  const restaurants = await prisma.restaurant.findMany({
+    include: {
+      owner: true
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
+  return restaurants.map((restaurant) => ({
+    restaurant: mapRestaurant(restaurant),
+    owner: mapUser({
+      ...restaurant.owner,
+      restaurant: {
+        id: restaurant.id
+      }
+    }),
+    createdAt: restaurant.createdAt.toISOString()
+  }));
+}
+
+export async function getAdminSummary() {
+  const [restaurantCount, userCount] = await Promise.all([prisma.restaurant.count(), prisma.user.count()]);
+
+  return {
+    restaurantCount,
+    userCount
+  };
+}
+
+export async function logAdminActivity(input: {
+  actorType: "admin" | "restaurant_owner" | "customer";
+  actorName: string;
+  action: string;
+  details: string;
+  restaurantId?: string;
+  userId?: string;
+}) {
+  if (!prismaUnsafe.activityLog) {
+    return null;
+  }
+
+  return prismaUnsafe.activityLog.create({
+    data: {
+      actorType: input.actorType,
+      actorName: input.actorName,
+      action: input.action,
+      details: input.details,
+      restaurantId: input.restaurantId,
+      userId: input.userId
+    }
+  }).catch(() => null);
+}
+
+export async function createCustomerOrder(input: {
+  restaurantId: string;
+  tableId?: string;
+  customerName: string;
+  source?: string;
+  items: Array<{
+    menuItemName: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }>;
+}) {
+  if (!prismaUnsafe.order) {
+    return null;
+  }
+
+  const totalAmount = input.items.reduce((sum, item) => sum + item.lineTotal, 0);
+  const order = await prismaUnsafe.order.create({
+    data: {
+      restaurantId: input.restaurantId,
+      tableId: input.tableId,
+      customerName: input.customerName,
+      status: "PENDING",
+      totalAmount,
+      source: input.source ?? "whatsapp",
+      items: {
+        create: input.items.map((item) => ({
+          menuItemName: item.menuItemName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          lineTotal: item.lineTotal
+        }))
+      }
+    },
+    include: {
+      restaurant: true,
+      table: true,
+      items: true
+    }
+  }).catch(() => null);
+
+  if (order) {
+    await logAdminActivity({
+      actorType: "customer",
+      actorName: input.customerName,
+      action: "order_created",
+      details: `${input.customerName} placed an order with ${input.items.length} items.`,
+      restaurantId: input.restaurantId
+    });
+  }
+
+  return order ? mapAdminOrder(order) : null;
+}
+
+export async function updateOrderStatus(orderId: string, status: "pending" | "completed" | "canceled") {
+  if (!prismaUnsafe.order) {
+    return null;
+  }
+
+  const order = await prismaUnsafe.order.update({
+    where: { id: orderId },
+    data: {
+      status: status.toUpperCase()
+    },
+    include: {
+      restaurant: true,
+      table: true,
+      items: true
+    }
+  }).catch(() => null);
+
+  if (order) {
+    await logAdminActivity({
+      actorType: "admin",
+      actorName: "Admin",
+      action: "order_status_updated",
+      details: `Order ${order.id} marked as ${status}.`,
+      restaurantId: order.restaurantId
+    });
+  }
+
+  return order ? mapAdminOrder(order) : null;
+}
+
+export async function getAdminDashboardData(): Promise<AdminDashboardData> {
+  const signupRequests = await getRestaurantOwnerRequests();
+  const [recentOrdersRaw, recentActivityRaw] = await Promise.all([
+    prismaUnsafe.order
+      ? prismaUnsafe.order.findMany({
+          include: {
+            restaurant: true,
+            table: true,
+            items: true
+          },
+          orderBy: {
+            createdAt: "desc"
+          },
+          take: 12
+        })
+      : Promise.resolve([]),
+    prismaUnsafe.activityLog
+      ? prismaUnsafe.activityLog.findMany({
+          include: {
+            restaurant: true
+          },
+          orderBy: {
+            createdAt: "desc"
+          },
+          take: 20
+        })
+      : Promise.resolve([])
+  ]);
+
+  const recentOrders = recentOrdersRaw.map(mapAdminOrder);
+  const recentActivity = recentActivityRaw.map(mapAdminActivity);
+  const lastTenMinutes = Date.now() - 10 * 60 * 1000;
+
+  const onlineOwners = recentActivity
+    .filter((entry: AdminActivity) => entry.actorType === "restaurant_owner" && new Date(entry.createdAt).getTime() >= lastTenMinutes)
+    .map((entry: AdminActivity) => ({
+      id: entry.id,
+      name: entry.actorName,
+      restaurantName: entry.restaurantName,
+      lastSeenAt: entry.createdAt
+    }));
+
+  const onlineCustomers = recentActivity
+    .filter((entry: AdminActivity) => entry.actorType === "customer" && new Date(entry.createdAt).getTime() >= lastTenMinutes)
+    .map((entry: AdminActivity) => ({
+      id: entry.id,
+      name: entry.actorName,
+      restaurantName: entry.restaurantName,
+      lastSeenAt: entry.createdAt
+    }));
+
+  return {
+    signupRequests,
+    recentOrders,
+    recentActivity,
+    onlineOwners,
+    onlineCustomers
+  };
+}
+
+export async function trackCustomerMenuVisit(input: {
+  restaurantId: string;
+  customerName: string;
+  tableName?: string;
+}) {
+  return logAdminActivity({
+    actorType: "customer",
+    actorName: input.customerName,
+    action: "menu_opened",
+    details: `${input.customerName} opened the menu${input.tableName ? ` for ${input.tableName}` : ""}.`,
+    restaurantId: input.restaurantId
+  });
+}
+
+export async function updateRestaurantOwnerStatus(userId: string, status: User["subscriptionStatus"]) {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  });
+
+  if (!existing || existing.role !== "restaurant") {
+    return null;
+  }
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      subscriptionStatus: toPrismaSubscriptionStatus(status)
+    },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  }).catch(() => null);
+
+  return user ? mapUser(user) : null;
+}
+
+export async function updateUserSubscriptionStatus(userId: string, status: User["subscriptionStatus"]) {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      subscriptionStatus: toPrismaSubscriptionStatus(status)
+    },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  }).catch(() => null);
+
+  return user ? mapUser(user) : null;
+}
+
+export async function deleteUserById(userId: string) {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      restaurant: true
+    }
+  });
+
+  if (!existing) {
+    return false;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (existing.restaurant) {
+      if ((tx as any).orderItem && (tx as any).order) {
+        await (tx as any).orderItem.deleteMany({
+          where: {
+            order: {
+              restaurantId: existing.restaurant.id
+            }
+          }
+        });
+        await (tx as any).order.deleteMany({
+          where: {
+            restaurantId: existing.restaurant.id
+          }
+        });
+      }
+
+      if ((tx as any).activityLog) {
+        await (tx as any).activityLog.deleteMany({
+          where: {
+            OR: [{ restaurantId: existing.restaurant.id }, { userId }]
+          }
+        });
+      }
+
+      await tx.subscription.deleteMany({
+        where: {
+          restaurantId: existing.restaurant.id
+        }
+      });
+      await tx.menuItem.deleteMany({
+        where: {
+          restaurantId: existing.restaurant.id
+        }
+      });
+      await tx.menuCategory.deleteMany({
+        where: {
+          restaurantId: existing.restaurant.id
+        }
+      });
+      await tx.table.deleteMany({
+        where: {
+          restaurantId: existing.restaurant.id
+        }
+      });
+      await tx.restaurant.delete({
+        where: {
+          id: existing.restaurant.id
+        }
+      });
+    }
+
+    await tx.user.delete({
+      where: {
+        id: userId
+      }
+    });
+  });
+
+  return true;
 }
 
 export async function getRestaurantBundleByUserId(userId: string) {
@@ -414,6 +892,29 @@ export async function getRestaurantBySlug(slug: string) {
     menuItems: restaurant.menuItems.map(mapMenuItem),
     tables: restaurant.tables.map(mapTable)
   };
+}
+
+const getCachedPublicRestaurants = unstable_cache(
+  async () =>
+    prisma.restaurant.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        currency: true,
+        whatsappNumber: true,
+        defaultLocale: true
+      },
+      orderBy: {
+        name: "asc"
+      }
+    }),
+  ["public-restaurants"],
+  { revalidate: 120 }
+);
+
+export async function getPublicRestaurants() {
+  return getCachedPublicRestaurants();
 }
 
 export async function addCategory(restaurantId: string, name: string) {

@@ -39,3 +39,8 @@ export const settingsSchema = z.object({
   whatsappNumber: z.string().min(8),
   defaultLocale: z.string().refine((value) => isSupportedLocale(value))
 });
+
+export const adminOwnerStatusSchema = z.object({
+  userId: z.string().min(2),
+  status: z.enum(["pending", "active", "canceled"])
+});
