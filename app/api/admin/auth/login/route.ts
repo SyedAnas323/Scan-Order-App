@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { setAdminSession } from "@/lib/admin-auth";
+import { ADMIN_COOKIE_NAME, ADMIN_COOKIE_VALUE, getAdminCookieOptions } from "@/lib/admin-auth";
 import { ADMIN_EMAIL, ADMIN_PASSWORD } from "@/lib/admin-config";
 
 export async function POST(request: Request) {
@@ -10,8 +10,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Invalid admin credentials." }, { status: 401 });
     }
 
-    await setAdminSession();
-    return NextResponse.json({ ok: true, redirectTo: "/admin/dashboard" });
+    const response = NextResponse.json({ ok: true, redirectTo: "/admin/dashboard" });
+    response.cookies.set(ADMIN_COOKIE_NAME, ADMIN_COOKIE_VALUE, getAdminCookieOptions());
+    return response;
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : "Unable to login as admin." },

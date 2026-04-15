@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { ADMIN_COOKIE_NAME, isAdminCookieAuthorized } from "@/lib/admin-auth";
 import { updateUserSubscriptionStatus } from "@/lib/data-store";
 import { adminOwnerStatusSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
   try {
-    const authorized = await isAdminAuthenticated();
+    const authorized = isAdminCookieAuthorized(request.headers.get("cookie")?.match(/sofraqr_admin=([^;]+)/)?.[1] ?? null);
     if (!authorized) {
       return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
     }

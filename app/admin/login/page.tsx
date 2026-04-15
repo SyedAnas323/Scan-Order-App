@@ -1,9 +1,11 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AdminLoginForm } from "@/components/admin-panel";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { ADMIN_COOKIE_NAME, isAdminCookieAuthorized } from "@/lib/admin-auth";
 
 export default async function AdminLoginPage() {
-  const authenticated = await isAdminAuthenticated();
+  const store = await cookies();
+  const authenticated = isAdminCookieAuthorized(store.get(ADMIN_COOKIE_NAME)?.value);
   if (authenticated) {
     redirect("/admin/dashboard");
   }
