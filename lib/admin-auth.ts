@@ -1,9 +1,6 @@
+import "server-only";
 import { cookies } from "next/headers";
-
-export const ADMIN_EMAIL = "admin@sofraqr.com";
-export const ADMIN_PASSWORD = "admin123";
-export const ADMIN_COOKIE_NAME = "sofraqr_admin";
-export const ADMIN_COOKIE_VALUE = "authorized";
+import { ADMIN_COOKIE_NAME, ADMIN_COOKIE_VALUE } from "@/lib/admin-config";
 
 export async function setAdminSession() {
   const store = await cookies();

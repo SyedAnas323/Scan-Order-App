@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ADMIN_EMAIL } from "@/lib/admin-auth";
+import { ADMIN_EMAIL } from "@/lib/admin-config";
 import { User } from "@/lib/types";
 
 type ActionState = {

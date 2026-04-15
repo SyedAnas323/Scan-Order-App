@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { ADMIN_EMAIL, ADMIN_PASSWORD, setAdminSession } from "@/lib/admin-auth";
+import { setAdminSession } from "@/lib/admin-auth";
+import { ADMIN_EMAIL, ADMIN_PASSWORD } from "@/lib/admin-config";
 
 export async function POST(request: Request) {
   try {
