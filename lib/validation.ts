@@ -23,9 +23,16 @@ export const menuItemSchema = z.object({
   name: z.string().min(2),
   description: z.string().min(2),
   price: z.coerce.number().positive(),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  imageUrl: z
+    .string()
+    .optional()
+    .refine((value) => !value || value.startsWith("data:image/") || z.string().url().safeParse(value).success, "Invalid image URL"),
   available: z.coerce.boolean().default(true),
   tags: z.string().optional()
+});
+
+export const menuItemDeleteSchema = z.object({
+  id: z.string().min(2)
 });
 
 export const tableSchema = z.object({

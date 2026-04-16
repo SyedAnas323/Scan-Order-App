@@ -9,12 +9,14 @@ import { formatCurrency } from "@/lib/utils";
 type Cart = Record<string, number>;
 
 export function PublicMenu({
+  locale,
   restaurant,
   categories,
   menuItems,
   table,
   dictionary
 }: {
+  locale: "en" | "ur" | "ar" | "it";
   restaurant: Restaurant;
   categories: MenuCategory[];
   menuItems: MenuItem[];
@@ -55,6 +57,12 @@ export function PublicMenu({
       currency: restaurant.currency
     })
   );
+  const itemsLabel = {
+    en: "items",
+    ur: "آئٹمز",
+    ar: "عناصر",
+    it: "elementi"
+  }[locale];
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
@@ -69,7 +77,7 @@ export function PublicMenu({
             <section key={category.id}>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-2xl font-bold">{category.name}</h2>
-                <div className="pill">{items.length} items</div>
+                <div className="pill">{items.length} {itemsLabel}</div>
               </div>
 
               <div className="space-y-4">

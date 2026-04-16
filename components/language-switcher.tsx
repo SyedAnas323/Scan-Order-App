@@ -22,6 +22,13 @@ export function LanguageSwitcher({ currentLocale }: { currentLocale: Locale }) {
     return () => window.removeEventListener("mousedown", onPointerDown);
   }, []);
 
+  const labelByLocale: Record<Locale, string> = {
+    en: "Language",
+    ur: "زبان",
+    ar: "اللغة",
+    it: "Lingua"
+  };
+
   return (
     <div ref={containerRef} className="relative">
       <button
@@ -29,7 +36,7 @@ export function LanguageSwitcher({ currentLocale }: { currentLocale: Locale }) {
         onClick={() => setOpen((current) => !current)}
         className="inline-flex items-center rounded-full border border-[var(--border)] bg-white/85 px-4 py-2 text-sm font-semibold text-[var(--foreground)]"
       >
-        <span>Language</span>
+        <span>{labelByLocale[currentLocale]}</span>
         <svg
           aria-hidden="true"
           viewBox="0 0 20 20"

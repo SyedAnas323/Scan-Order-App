@@ -985,6 +985,46 @@ export async function addMenuItem(restaurantId: string, input: Omit<MenuItem, "i
   return mapMenuItem(item);
 }
 
+export async function updateMenuItem(
+  restaurantId: string,
+  itemId: string,
+  input: Omit<MenuItem, "id" | "restaurantId">
+) {
+  const updated = await prisma.menuItem.updateMany({
+    where: {
+      id: itemId,
+      restaurantId
+    },
+    data: {
+      categoryId: input.categoryId,
+      name: input.name,
+      description: input.description,
+      price: input.price,
+      imageUrl: input.imageUrl || null,
+      available: input.available,
+      tags: input.tags
+    }
+  });
+
+  if (!updated.count) {
+    return null;
+  }
+
+  const record = await prisma.menuItem.findUnique({ where: { id: itemId } });
+  return record ? mapMenuItem(record) : null;
+}
+
+export async function deleteMenuItem(restaurantId: string, itemId: string) {
+  const deleted = await prisma.menuItem.deleteMany({
+    where: {
+      id: itemId,
+      restaurantId
+    }
+  });
+
+  return deleted.count > 0;
+}
+
 export async function addTable(restaurantId: string, input: Pick<Table, "name" | "number">) {
   const table = await prisma.table.create({
     data: {
