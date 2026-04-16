@@ -46,7 +46,7 @@ export default async function DashboardMenuPage() {
                         <div className="text-lg font-bold">{item.name}</div>
                         <p className="mt-1 text-sm text-[var(--muted)]">{item.description}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-left md:text-right">
                         <div className="text-lg font-bold">{formatCurrency(item.price, bundle.restaurant.currency)}</div>
                         <div className="mt-2 text-sm text-[var(--muted)]">{item.available ? "Available" : "Unavailable"}</div>
                       </div>

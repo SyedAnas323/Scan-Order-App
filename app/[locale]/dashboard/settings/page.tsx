@@ -12,7 +12,7 @@ export default async function DashboardSettingsPage() {
   return (
     <div className="glass rounded-[2rem] p-6">
       <h2 className="text-2xl font-bold">Restaurant settings</h2>
-      <p className="mt-2 text-[var(--muted)]">Set WhatsApp number, currency, address, and default language for the public menu.</p>
+      <p className="mt-2 text-[var(--muted)]">Set WhatsApp number, currency, address, default language, and restaurant thumbnail using either an image URL or a direct upload from your device.</p>
       <div className="mt-5">
         <SettingsForm restaurant={bundle.restaurant} />
       </div>

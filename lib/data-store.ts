@@ -455,6 +455,44 @@ export async function authenticateUser(email: string, password: string) {
   return user ? mapUser(user) : null;
 }
 
+export async function hasSeenWelcome(userId: string) {
+  if (!prismaUnsafe.activityLog) {
+    return false;
+  }
+
+  const existing = await prismaUnsafe.activityLog.findFirst({
+    where: {
+      userId,
+      action: "welcome_seen"
+    },
+    select: {
+      id: true
+    }
+  }).catch(() => null);
+
+  return Boolean(existing);
+}
+
+export async function markWelcomeSeen(input: {
+  userId: string;
+  actorName: string;
+  restaurantId?: string;
+}) {
+  const alreadySeen = await hasSeenWelcome(input.userId);
+  if (alreadySeen) {
+    return null;
+  }
+
+  return logAdminActivity({
+    actorType: "restaurant_owner",
+    actorName: input.actorName,
+    action: "welcome_seen",
+    details: `${input.actorName} viewed the first-time welcome page.`,
+    restaurantId: input.restaurantId,
+    userId: input.userId
+  });
+}
+
 export async function getRestaurantOwnerRequests(): Promise<RestaurantOwnerRequest[]> {
   const users = await prisma.user.findMany({
     where: {
@@ -901,9 +939,11 @@ const getCachedPublicRestaurants = unstable_cache(
         id: true,
         name: true,
         slug: true,
+        address: true,
         currency: true,
         whatsappNumber: true,
-        defaultLocale: true
+        defaultLocale: true,
+        logoUrl: true
       },
       orderBy: {
         name: "asc"
@@ -959,7 +999,7 @@ export async function addTable(restaurantId: string, input: Pick<Table, "name" |
 
 export async function updateRestaurantSettings(
   restaurantId: string,
-  input: Pick<Restaurant, "address" | "currency" | "whatsappNumber" | "defaultLocale">
+  input: Pick<Restaurant, "address" | "currency" | "whatsappNumber" | "defaultLocale" | "logoUrl">
 ) {
   const restaurant = await prisma.restaurant.update({
     where: { id: restaurantId },
@@ -967,7 +1007,8 @@ export async function updateRestaurantSettings(
       address: input.address,
       currency: input.currency,
       whatsappNumber: input.whatsappNumber,
-      defaultLocale: input.defaultLocale
+      defaultLocale: input.defaultLocale,
+      logoUrl: input.logoUrl || null
     }
   }).catch(() => null);
 

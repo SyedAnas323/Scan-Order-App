@@ -22,7 +22,7 @@ export function DashboardShell({
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-white/75 p-5">
         <div>
           <div className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">{t.common.dashboard}</div>
-          <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
+          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{restaurant.name}</h1>
         </div>
         <div className="flex items-center gap-3">
           <LanguageSwitcher currentLocale={locale} />
@@ -43,17 +43,17 @@ export function DashboardShell({
 
       <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
         <aside className="glass rounded-[2rem] p-4">
-          <nav className="space-y-2">
-            <Link href={`/${locale}/dashboard`} className="block rounded-2xl px-4 py-3 hover:bg-white/60">
+          <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-1">
+            <Link href={`/${locale}/dashboard`} className="block rounded-2xl px-3 py-3 text-sm hover:bg-white/60 sm:px-4 sm:text-base">
               {t.common.dashboard}
             </Link>
-            <Link href={`/${locale}/dashboard/menu`} className="block rounded-2xl px-4 py-3 hover:bg-white/60">
+            <Link href={`/${locale}/dashboard/menu`} className="block rounded-2xl px-3 py-3 text-sm hover:bg-white/60 sm:px-4 sm:text-base">
               {t.common.menu}
             </Link>
-            <Link href={`/${locale}/dashboard/tables`} className="block rounded-2xl px-4 py-3 hover:bg-white/60">
+            <Link href={`/${locale}/dashboard/tables`} className="block rounded-2xl px-3 py-3 text-sm hover:bg-white/60 sm:px-4 sm:text-base">
               {t.common.tables}
             </Link>
-            <Link href={`/${locale}/dashboard/settings`} className="block rounded-2xl px-4 py-3 hover:bg-white/60">
+            <Link href={`/${locale}/dashboard/settings`} className="block rounded-2xl px-3 py-3 text-sm hover:bg-white/60 sm:px-4 sm:text-base">
               {t.common.settings}
             </Link>
           </nav>

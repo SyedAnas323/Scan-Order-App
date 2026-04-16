@@ -6,7 +6,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   const t = getTranslations(locale);
 
   return (
-    <header className="shell flex items-center justify-between py-6">
+    <header className="shell flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-6">
       <Link href={`/${locale}`} className="flex items-center gap-3">
         <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-[1.4rem] bg-[linear-gradient(145deg,#c55b1f_0%,#8b300f_100%)] shadow-[0_14px_30px_rgba(139,48,15,0.28)]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.25),transparent_45%)]" />
@@ -22,15 +22,15 @@ export function SiteHeader({ locale }: { locale: Locale }) {
         </div>
       </Link>
 
-      <div className="flex items-center gap-3">
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end sm:gap-3">
         <LanguageSwitcher currentLocale={locale} />
-        <Link href={`/${locale}/order`} className="rounded-full border border-[var(--border)] bg-white/85 px-4 py-2 text-sm font-semibold">
+        <Link href={`/${locale}/order`} className="rounded-full border border-[var(--border)] bg-white/85 px-3 py-2 text-xs font-semibold sm:px-4 sm:text-sm">
           Order Now
         </Link>
-        <Link href={`/${locale}/login`} className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold">
+        <Link href={`/${locale}/login`} className="rounded-full border border-[var(--border)] px-3 py-2 text-xs font-semibold sm:px-4 sm:text-sm">
           {t.common.login}
         </Link>
-        <Link href={`/${locale}/signup`} className="rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white">
+        <Link href={`/${locale}/signup`} className="rounded-full bg-[var(--brand)] px-3 py-2 text-xs font-semibold text-white sm:px-4 sm:text-sm">
           {t.common.signup}
         </Link>
       </div>

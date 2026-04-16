@@ -13,7 +13,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </div>
             <div>
               <div className="text-sm uppercase tracking-[0.35em] text-white/60">Admin panel</div>
-              <h1 className="mt-1 text-3xl font-bold">SofraQR Control Center</h1>
+              <h1 className="mt-1 text-2xl font-bold sm:text-3xl">SofraQR Control Center</h1>
               <p className="mt-2 max-w-2xl text-sm text-white/70">
                 Manage restaurants, review users, and control subscriptions from one protected area.
               </p>

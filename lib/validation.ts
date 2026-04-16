@@ -37,7 +37,11 @@ export const settingsSchema = z.object({
   address: z.string().min(2),
   currency: z.string().min(3).max(3),
   whatsappNumber: z.string().min(8),
-  defaultLocale: z.string().refine((value) => isSupportedLocale(value))
+  defaultLocale: z.string().refine((value) => isSupportedLocale(value)),
+  logoUrl: z
+    .string()
+    .optional()
+    .refine((value) => !value || value.startsWith("data:image/") || z.string().url().safeParse(value).success, "Invalid image URL")
 });
 
 export const adminOwnerStatusSchema = z.object({

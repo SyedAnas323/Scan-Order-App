@@ -108,7 +108,7 @@ export function AddTableForm() {
 export function SettingsForm({
   restaurant
 }: {
-  restaurant: { address: string; currency: string; whatsappNumber: string; defaultLocale: string };
+  restaurant: { address: string; currency: string; whatsappNumber: string; defaultLocale: string; logoUrl?: string };
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -119,11 +119,19 @@ export function SettingsForm({
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         startTransition(async () => {
+          const selectedFile = form.get("logoFile");
+          let logoUrl = String(form.get("logoUrl") ?? "").trim();
+
+          if (selectedFile instanceof File && selectedFile.size > 0) {
+            logoUrl = await fileToDataUrl(selectedFile);
+          }
+
           await postJson("/api/dashboard/settings", {
             address: form.get("address"),
             currency: form.get("currency"),
             whatsappNumber: form.get("whatsappNumber"),
-            defaultLocale: form.get("defaultLocale")
+            defaultLocale: form.get("defaultLocale"),
+            logoUrl
           });
           window.location.reload();
         });
@@ -132,6 +140,19 @@ export function SettingsForm({
       <input defaultValue={restaurant.address} name="address" placeholder="Address" required className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 md:col-span-2" />
       <input defaultValue={restaurant.currency} name="currency" maxLength={3} required className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3" />
       <input defaultValue={restaurant.whatsappNumber} name="whatsappNumber" required className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3" />
+      <input
+        defaultValue={restaurant.logoUrl ?? ""}
+        name="logoUrl"
+        placeholder="Thumbnail URL (https://...)"
+        className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 md:col-span-2"
+      />
+      <input
+        name="logoFile"
+        type="file"
+        accept="image/*"
+        className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 md:col-span-2"
+      />
+      <p className="text-xs text-[var(--muted)] md:col-span-2">You can paste an image URL or upload from device. If both are provided, uploaded file is used.</p>
       <select defaultValue={restaurant.defaultLocale} name="defaultLocale" className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 md:col-span-2">
         <option value="en">English</option>
         <option value="ur">Urdu</option>
@@ -143,4 +164,19 @@ export function SettingsForm({
       </button>
     </form>
   );
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("Unable to read selected image."));
+    };
+    reader.onerror = () => reject(new Error("Unable to read selected image."));
+    reader.readAsDataURL(file);
+  });
 }

@@ -27,8 +27,8 @@ export default async function PublicMenuPage({
     <main className="shell py-8">
       <div className="mb-8 max-w-3xl">
         <div className="pill">{safeBundle.restaurant.name}</div>
-        <h1 className="mt-4 text-5xl font-bold">{safeBundle.restaurant.name}</h1>
-        <p className="mt-3 text-lg text-[var(--muted)]">
+        <h1 className="mt-4 break-words text-3xl font-bold sm:text-4xl lg:text-5xl">{safeBundle.restaurant.name}</h1>
+        <p className="mt-3 text-base text-[var(--muted)] sm:text-lg">
           Customer scans the QR, opens this menu, selects dishes, and sends the order to the restaurant on WhatsApp.
         </p>
       </div>

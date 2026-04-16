@@ -34,6 +34,9 @@ export default async function OnboardingPage({
           <p className="mt-4 leading-7 text-[var(--muted)]">
             This local MVP includes a Paddle-ready activation step. Replace the simulated button with your live Paddle checkout and keep the webhook endpoint for activation.
           </p>
+          <p className="mt-3 rounded-[1.4rem] border border-[var(--border)] bg-white/75 px-4 py-3 text-sm font-medium text-[var(--brand-dark)]">
+            Please wait for your subscription to become active and for admin approval before your restaurant dashboard is fully enabled.
+          </p>
           <div className="mt-8 rounded-[1.7rem] bg-[#25130a] p-6 text-white">
             <div className="text-sm uppercase tracking-[0.25em] text-white/60">Starter plan</div>
             <div className="mt-2 text-5xl font-bold">$29</div>

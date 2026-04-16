@@ -83,13 +83,13 @@ export function PublicMenu({
                           <div className="flex h-full items-center justify-center bg-[var(--accent)]/40 text-lg font-semibold">{item.name}</div>
                         )}
                       </div>
-                      <div className="p-5">
-                        <div className="flex items-start justify-between gap-4">
+                      <div className="p-4 sm:p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
                           <div>
                             <h3 className="text-xl font-bold">{item.name}</h3>
                             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{item.description}</p>
                           </div>
-                          <div className="text-lg font-bold">{formatCurrency(item.price, restaurant.currency)}</div>
+                          <div className="text-base font-bold sm:text-lg">{formatCurrency(item.price, restaurant.currency)}</div>
                         </div>
                         <div className="mt-4 flex flex-wrap items-center gap-2">
                           {item.tags.map((tag) => (
@@ -116,7 +116,7 @@ export function PublicMenu({
         })}
       </div>
 
-      <aside className="glass sticky top-6 h-fit rounded-[2rem] p-5">
+      <aside className="glass h-fit rounded-[2rem] p-5 lg:sticky lg:top-6">
         <div className="text-sm uppercase tracking-[0.25em] text-[var(--muted)]">{restaurant.name}</div>
         <h2 className="mt-2 text-2xl font-bold">{dictionary.customer.browseMenu}</h2>
         {table ? (

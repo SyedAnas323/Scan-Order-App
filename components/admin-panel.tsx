@@ -216,7 +216,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
                 <div className="mt-1 font-semibold">{row.user.subscriptionStatus.toUpperCase()}</div>
               </div>
             </div>
-            <div className="min-w-[280px] space-y-3 rounded-[1.4rem] border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div className="w-full max-w-[340px] space-y-3 rounded-[1.4rem] border border-[var(--border)] bg-[var(--surface)] p-4">
               <AdminStatusActions user={row.user} />
               <DeleteUserButton userId={row.user.id} />
             </div>

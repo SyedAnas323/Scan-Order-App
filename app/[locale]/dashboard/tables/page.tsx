@@ -43,7 +43,7 @@ export default async function DashboardTablesPage({ params }: { params: Promise<
                 Preview
               </Link>
             </div>
-            <div className="relative mx-auto mt-5 h-56 w-56 overflow-hidden rounded-[1.5rem] bg-white p-4">
+            <div className="relative mx-auto mt-5 aspect-square w-full max-w-56 overflow-hidden rounded-[1.5rem] bg-white p-4">
               <Image src={entry.qr} alt={entry.table.name} fill className="object-contain p-4" />
             </div>
             <a href={entry.qr} download={`${bundle.restaurant.slug}-${entry.table.number}.png`} className="mt-5 block rounded-2xl bg-[var(--brand)] px-4 py-3 text-center font-semibold text-white">

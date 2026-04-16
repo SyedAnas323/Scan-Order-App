@@ -10,15 +10,17 @@ export default async function OrderPage({ params }: { params: Promise<{ locale: 
   return (
     <div className="pb-16">
       <SiteHeader locale={locale} />
-      <main className="shell pt-10">
-        <div className="mx-auto max-w-3xl rounded-[2rem] border border-[var(--border)] bg-white/85 p-6 shadow-[0_24px_90px_rgba(60,35,15,0.08)]">
+      <main className="shell pt-6 sm:pt-8 lg:pt-10">
+        <div className="mx-auto max-w-6xl rounded-[1.6rem] border border-[var(--border)] bg-white/85 p-4 shadow-[0_24px_90px_rgba(60,35,15,0.08)] sm:rounded-[2rem] sm:p-6">
           {restaurants.length ? (
             <RestaurantMenuPicker
               locale={locale}
               restaurants={restaurants.map((restaurant) => ({
                 id: restaurant.id,
                 name: restaurant.name,
-                slug: restaurant.slug
+                slug: restaurant.slug,
+                address: restaurant.address,
+                logoUrl: restaurant.logoUrl
               }))}
             />
           ) : (

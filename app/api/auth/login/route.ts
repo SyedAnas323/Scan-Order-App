@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authenticateUser } from "@/lib/data-store";
+import { authenticateUser, hasSeenWelcome } from "@/lib/data-store";
 import { setSessionCookie } from "@/lib/auth";
 import { loginSchema } from "@/lib/validation";
 
@@ -13,7 +13,8 @@ export async function POST(request: Request) {
     }
 
     await setSessionCookie({ userId: user.id, restaurantId: user.restaurantId });
-    return NextResponse.json({ ok: true, redirectTo: "/dashboard" });
+    const seenWelcome = await hasSeenWelcome(user.id);
+    return NextResponse.json({ ok: true, redirectTo: seenWelcome ? "/dashboard" : "/welcome" });
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : "Unable to login." },
