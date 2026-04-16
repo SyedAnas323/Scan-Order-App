@@ -19,6 +19,24 @@ export function buildWhatsAppMessage(input: {
 }
 
 export function buildWhatsAppLink(phoneNumber: string, message: string) {
-  const sanitized = phoneNumber.replace(/[^\d]/g, "");
-  return `https://wa.me/${sanitized}?text=${encodeURIComponent(message)}`;
+  const normalized = normalizeWhatsAppNumber(phoneNumber);
+  return `https://api.whatsapp.com/send?phone=${normalized}&text=${encodeURIComponent(message)}`;
+}
+
+function normalizeWhatsAppNumber(phoneNumber: string) {
+  let digits = phoneNumber.replace(/[^\d]/g, "");
+
+  if (digits.startsWith("00")) {
+    digits = digits.slice(2);
+  }
+
+  // Common Pakistan local formats to international format (app default market).
+  if (digits.startsWith("0") && digits.length === 11) {
+    digits = `92${digits.slice(1)}`;
+  }
+  if (digits.startsWith("3") && digits.length === 10) {
+    digits = `92${digits}`;
+  }
+
+  return digits;
 }
