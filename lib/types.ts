@@ -154,6 +154,8 @@ export type AdminOrder = {
   restaurantName: string;
   tableName?: string;
   customerName: string;
+  customerPhone?: string;
+  customerAddress?: string;
   status: OrderStatus;
   totalAmount: number;
   source: string;

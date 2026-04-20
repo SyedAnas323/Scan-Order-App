@@ -324,8 +324,9 @@ const dictionaries: Record<Locale, Dictionary> = {
   }
 };
 
-export function getTranslations(locale: Locale) {
-  return dictionaries[locale];
+export function getTranslations(locale?: string): Dictionary {
+  const safeLocale: Locale = isSupportedLocale(locale) ? locale : "en";
+  return dictionaries[safeLocale];
 }
 
 export function isSupportedLocale(value?: string): value is Locale {

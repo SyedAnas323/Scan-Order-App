@@ -1,5 +1,8 @@
 export function buildWhatsAppMessage(input: {
   restaurantName: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress?: string;
   tableName?: string;
   orderItems: Array<{ name: string; quantity: number; lineTotal: number }>;
   total: number;
@@ -7,12 +10,15 @@ export function buildWhatsAppMessage(input: {
 }) {
   const lines = [
     `Restaurant: ${input.restaurantName}`,
+    `Customer: ${input.customerName}`,
+    `Phone: ${input.customerPhone}`,
+    input.customerAddress ? `Address: ${input.customerAddress}` : null,
     input.tableName ? `Table: ${input.tableName}` : null,
     "",
     "Order:",
-    ...input.orderItems.map((item) => `- ${item.name} x${item.quantity} = ${input.currency} ${item.lineTotal}`),
+    ...input.orderItems.map((item) => `- ${item.name} x${item.quantity} = ${input.currency} ${item.lineTotal.toFixed(2)}`),
     "",
-    `Total: ${input.currency} ${input.total}`
+    `Total: ${input.currency} ${input.total.toFixed(2)}`
   ].filter(Boolean);
 
   return lines.join("\n");

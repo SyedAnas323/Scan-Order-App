@@ -24,6 +24,11 @@ export function PublicMenu({
   dictionary: Dictionary;
 }) {
   const [cart, setCart] = useState<Cart>({});
+  const [showConfirmForm, setShowConfirmForm] = useState(false);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [formError, setFormError] = useState("");
 
   const totals = useMemo(() => {
     const orderItems = Object.entries(cart)
@@ -47,21 +52,50 @@ export function PublicMenu({
     };
   }, [cart, menuItems]);
 
-  const whatsappLink = buildWhatsAppLink(
-    restaurant.whatsappNumber,
-    buildWhatsAppMessage({
-      restaurantName: restaurant.name,
-      tableName: table?.name,
-      orderItems: totals.orderItems,
-      total: totals.total,
-      currency: restaurant.currency
-    })
-  );
   const itemsLabel = {
     en: "items",
-    ur: "آئٹمز",
-    ar: "عناصر",
+    ur: "?????",
+    ar: "?????",
     it: "elementi"
+  }[locale];
+
+  const uiText = {
+    en: {
+      confirmOrder: "Confirm Order",
+      yourName: "Your name",
+      yourPhone: "Your phone number",
+      yourAddress: "Delivery address",
+      tableNumber: "Table number",
+      sendToWhatsApp: "Send to WhatsApp",
+      fillDetails: "Please fill all required details."
+    },
+    ur: {
+      confirmOrder: "???? ????? ????",
+      yourName: "?? ?? ???",
+      yourPhone: "?? ?? ??? ????",
+      yourAddress: "???",
+      tableNumber: "???? ????",
+      sendToWhatsApp: "WhatsApp ?? ??????",
+      fillDetails: "???? ??? ???? ????? ??????? ???? ?????"
+    },
+    ar: {
+      confirmOrder: "????? ?????",
+      yourName: "?????",
+      yourPhone: "??? ??????",
+      yourAddress: "???????",
+      tableNumber: "??? ???????",
+      sendToWhatsApp: "????? ??? ??????",
+      fillDetails: "???? ????? ???? ???????? ????????."
+    },
+    it: {
+      confirmOrder: "Conferma ordine",
+      yourName: "Il tuo nome",
+      yourPhone: "Il tuo numero",
+      yourAddress: "Indirizzo",
+      tableNumber: "Numero tavolo",
+      sendToWhatsApp: "Invia su WhatsApp",
+      fillDetails: "Compila tutti i campi obbligatori."
+    }
   }[locale];
 
   return (
@@ -155,9 +189,113 @@ export function PublicMenu({
           <span>{formatCurrency(totals.total, restaurant.currency)}</span>
         </div>
 
-        <a href={whatsappLink} target="_blank" rel="noreferrer" className="mt-6 block rounded-2xl bg-[var(--success)] px-4 py-3 text-center font-semibold text-white">
-          {dictionary.customer.orderOnWhatsApp}
-        </a>
+        <button
+          type="button"
+          disabled={!totals.orderItems.length}
+          onClick={() => {
+            setShowConfirmForm(true);
+            setFormError("");
+          }}
+          className="mt-6 w-full rounded-2xl bg-[var(--success)] px-4 py-3 text-center font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400"
+        >
+          {uiText.confirmOrder}
+        </button>
+
+        {showConfirmForm ? (
+          <form
+            className="mt-4 grid gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const name = customerName.trim();
+              const phone = customerPhone.trim();
+              const address = customerAddress.trim();
+
+              if (!name || !phone || (!table && !address)) {
+                setFormError(uiText.fillDetails);
+                return;
+              }
+
+              const message = buildWhatsAppMessage({
+                restaurantName: restaurant.name,
+                customerName: name,
+                customerPhone: phone,
+                customerAddress: address || undefined,
+                tableName: table ? `${table.name} (${table.number})` : undefined,
+                orderItems: totals.orderItems,
+                total: totals.total,
+                currency: restaurant.currency
+              });
+              const whatsappLink = buildWhatsAppLink(restaurant.whatsappNumber, message);
+              window.open(whatsappLink, "_blank", "noopener,noreferrer");
+
+              fetch("/api/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  restaurantId: restaurant.id,
+                  tableId: table?.id,
+                  customerName: name,
+                  customerPhone: phone,
+                  customerAddress: address || undefined,
+                  source: table ? "qr" : "web",
+                  items: totals.orderItems.map((item) => ({
+                    menuItemName: item.name,
+                    quantity: item.quantity,
+                    unitPrice: item.lineTotal / item.quantity,
+                    lineTotal: item.lineTotal
+                  }))
+                })
+              })
+                .then(async (response) => {
+                  if (!response.ok) {
+                    const payload = (await response.json()) as { error?: string };
+                    throw new Error(payload.error || uiText.fillDetails);
+                  }
+                  return response.json();
+                })
+                .then(() => setFormError(""))
+                .catch((error: unknown) => {
+                  const baseMessage = error instanceof Error ? error.message : uiText.fillDetails;
+                  setFormError(`${baseMessage} WhatsApp sent, but dashboard sync failed.`);
+                });
+            }}
+          >
+            <input
+              value={customerName}
+              onChange={(event) => setCustomerName(event.target.value)}
+              placeholder={uiText.yourName}
+              className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+              required
+            />
+            <input
+              value={customerPhone}
+              onChange={(event) => setCustomerPhone(event.target.value)}
+              placeholder={uiText.yourPhone}
+              className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+              required
+            />
+            {table ? (
+              <input
+                value={`${uiText.tableNumber}: ${table.number}`}
+                readOnly
+                aria-label={uiText.tableNumber}
+                className="rounded-2xl border border-[var(--border)] bg-stone-100 px-4 py-3 text-[var(--muted)]"
+              />
+            ) : (
+              <input
+                value={customerAddress}
+                onChange={(event) => setCustomerAddress(event.target.value)}
+                placeholder={uiText.yourAddress}
+                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                required
+              />
+            )}
+            {formError ? <p className="text-sm text-rose-700">{formError}</p> : null}
+            <button type="submit" className="rounded-2xl bg-[var(--brand)] px-4 py-3 text-center font-semibold text-white">
+              {uiText.sendToWhatsApp}
+            </button>
+          </form>
+        ) : null}
       </aside>
     </div>
   );

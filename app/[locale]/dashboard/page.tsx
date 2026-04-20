@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { requireSession } from "@/lib/auth";
-import { getRestaurantBundleByUserId } from "@/lib/data-store";
+import { getRestaurantBundleByUserId, getRestaurantOrders } from "@/lib/data-store";
 import { getTranslations, type Locale } from "@/lib/i18n";
+import { AdminOrder } from "@/lib/types";
 
 export default async function DashboardOverview({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   const session = await requireSession();
   const bundle = await getRestaurantBundleByUserId(session.userId);
+  const orders = await getRestaurantOrders(session.restaurantId);
   if (!bundle) {
     return null;
   }
+  const pendingOrders = orders.filter((order: AdminOrder) => order.status === "pending");
   const t = getTranslations(locale);
   const summaryCards: Array<[string, string]> = [
     [t.dashboard.onboardingDone, bundle.user.subscriptionStatus],
@@ -19,6 +22,19 @@ export default async function DashboardOverview({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
+      {pendingOrders.length ? (
+        <section className="glass rounded-[2rem] border border-[var(--success)]/25 bg-[var(--success)]/10 p-5">
+          <div className="text-sm uppercase tracking-[0.25em] text-[var(--success)]">New orders</div>
+          <div className="mt-2 text-xl font-bold">{pendingOrders.length} pending customer orders</div>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            Latest order by {pendingOrders[0].customerName} {pendingOrders[0].tableName ? `(${pendingOrders[0].tableName})` : ""}.
+          </p>
+          <Link href={`/${locale}/dashboard/orders`} className="mt-4 inline-flex rounded-full bg-[var(--success)] px-5 py-2 text-sm font-semibold text-white">
+            Open orders
+          </Link>
+        </section>
+      ) : null}
+
       <section className="grid gap-4 md:grid-cols-3">
         {summaryCards.map(([label, value]) => (
           <article key={label} className="glass rounded-[2rem] p-5">

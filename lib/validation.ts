@@ -55,3 +55,27 @@ export const adminOwnerStatusSchema = z.object({
   userId: z.string().min(2),
   status: z.enum(["pending", "active", "canceled"])
 });
+
+export const customerOrderSchema = z.object({
+  restaurantId: z.string().min(2),
+  tableId: z.string().min(2).optional(),
+  customerName: z.string().min(2),
+  customerPhone: z.string().min(8),
+  customerAddress: z.string().min(3).optional().or(z.literal("")),
+  source: z.string().min(2).optional(),
+  items: z
+    .array(
+      z.object({
+        menuItemName: z.string().min(1),
+        quantity: z.coerce.number().int().positive(),
+        unitPrice: z.coerce.number().nonnegative(),
+        lineTotal: z.coerce.number().nonnegative()
+      })
+    )
+    .min(1)
+});
+
+export const restaurantOrderStatusSchema = z.object({
+  orderId: z.string().min(2),
+  status: z.enum(["completed", "canceled"])
+});

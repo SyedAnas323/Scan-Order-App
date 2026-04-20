@@ -50,6 +50,9 @@ export function DashboardShell({
             <Link href={`/${locale}/dashboard/menu`} className="block rounded-2xl px-3 py-3 text-sm hover:bg-white/60 sm:px-4 sm:text-base">
               {t.common.menu}
             </Link>
+            <Link href={`/${locale}/dashboard/orders`} className="block rounded-2xl px-3 py-3 text-sm hover:bg-white/60 sm:px-4 sm:text-base">
+              Orders
+            </Link>
             <Link href={`/${locale}/dashboard/tables`} className="block rounded-2xl px-3 py-3 text-sm hover:bg-white/60 sm:px-4 sm:text-base">
               {t.common.tables}
             </Link>

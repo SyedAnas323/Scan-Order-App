@@ -183,16 +183,49 @@ function mapTable(record: { id: string; restaurantId: string; name: string; numb
   };
 }
 
+function encodeOrderSource(input: { channel: string; customerPhone?: string; customerAddress?: string }) {
+  return JSON.stringify({
+    channel: input.channel,
+    customerPhone: input.customerPhone ?? "",
+    customerAddress: input.customerAddress ?? ""
+  });
+}
+
+function decodeOrderSource(raw: string) {
+  try {
+    const parsed = JSON.parse(raw) as {
+      channel?: string;
+      customerPhone?: string;
+      customerAddress?: string;
+    };
+
+    return {
+      source: parsed.channel || "whatsapp",
+      customerPhone: parsed.customerPhone || undefined,
+      customerAddress: parsed.customerAddress || undefined
+    };
+  } catch {
+    return {
+      source: raw || "whatsapp",
+      customerPhone: undefined,
+      customerAddress: undefined
+    };
+  }
+}
+
 function mapAdminOrder(record: any): AdminOrder {
+  const sourceMeta = decodeOrderSource(record.source ?? "whatsapp");
   return {
     id: record.id,
     restaurantId: record.restaurantId,
     restaurantName: record.restaurant?.name ?? "Unknown restaurant",
     tableName: record.table?.name ?? undefined,
     customerName: record.customerName,
+    customerPhone: sourceMeta.customerPhone,
+    customerAddress: sourceMeta.customerAddress,
     status: record.status.toLowerCase(),
     totalAmount: typeof record.totalAmount?.toNumber === "function" ? record.totalAmount.toNumber() : Number(record.totalAmount ?? 0),
-    source: record.source,
+    source: sourceMeta.source,
     createdAt: record.createdAt.toISOString(),
     items: (record.items ?? []).map((item: any) => ({
       id: item.id,
@@ -589,6 +622,8 @@ export async function createCustomerOrder(input: {
   restaurantId: string;
   tableId?: string;
   customerName: string;
+  customerPhone?: string;
+  customerAddress?: string;
   source?: string;
   items: Array<{
     menuItemName: string;
@@ -598,18 +633,42 @@ export async function createCustomerOrder(input: {
   }>;
 }) {
   if (!prismaUnsafe.order) {
-    return null;
+    throw new Error("Order model is unavailable in Prisma Client. Run `npx prisma generate` and restart the server.");
+  }
+
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: input.restaurantId },
+    select: { id: true }
+  });
+  if (!restaurant) {
+    throw new Error("Invalid restaurant for this order.");
+  }
+
+  let safeTableId: string | undefined;
+  if (input.tableId) {
+    const table = await prisma.table.findFirst({
+      where: {
+        id: input.tableId,
+        restaurantId: input.restaurantId
+      },
+      select: { id: true }
+    });
+    safeTableId = table?.id;
   }
 
   const totalAmount = input.items.reduce((sum, item) => sum + item.lineTotal, 0);
   const order = await prismaUnsafe.order.create({
     data: {
       restaurantId: input.restaurantId,
-      tableId: input.tableId,
+      tableId: safeTableId,
       customerName: input.customerName,
       status: "PENDING",
       totalAmount,
-      source: input.source ?? "whatsapp",
+      source: encodeOrderSource({
+        channel: input.source ?? "whatsapp",
+        customerPhone: input.customerPhone,
+        customerAddress: input.customerAddress
+      }),
       items: {
         create: input.items.map((item) => ({
           menuItemName: item.menuItemName,
@@ -624,7 +683,7 @@ export async function createCustomerOrder(input: {
       table: true,
       items: true
     }
-  }).catch(() => null);
+  });
 
   if (order) {
     await logAdminActivity({
@@ -667,6 +726,73 @@ export async function updateOrderStatus(orderId: string, status: "pending" | "co
   }
 
   return order ? mapAdminOrder(order) : null;
+}
+
+export async function getRestaurantOrders(restaurantId: string) {
+  if (!prismaUnsafe.order) {
+    return [];
+  }
+
+  const orders = await prismaUnsafe.order.findMany({
+    where: { restaurantId },
+    include: {
+      restaurant: true,
+      table: true,
+      items: true
+    },
+    orderBy: {
+      createdAt: "desc"
+    },
+    take: 50
+  }).catch(() => []);
+
+  return orders.map(mapAdminOrder);
+}
+
+export async function updateRestaurantOrderStatus(
+  restaurantId: string,
+  orderId: string,
+  status: "completed" | "canceled",
+  actorName: string
+) {
+  if (!prismaUnsafe.order) {
+    return null;
+  }
+
+  const order = await prismaUnsafe.order.updateMany({
+    where: {
+      id: orderId,
+      restaurantId
+    },
+    data: {
+      status: status.toUpperCase()
+    }
+  }).catch(() => null);
+
+  if (!order?.count) {
+    return null;
+  }
+
+  const updated = await prismaUnsafe.order.findUnique({
+    where: { id: orderId },
+    include: {
+      restaurant: true,
+      table: true,
+      items: true
+    }
+  }).catch(() => null);
+
+  if (updated) {
+    await logAdminActivity({
+      actorType: "restaurant_owner",
+      actorName,
+      action: "order_status_updated",
+      details: `Order ${updated.id} marked as ${status}.`,
+      restaurantId
+    });
+  }
+
+  return updated ? mapAdminOrder(updated) : null;
 }
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
