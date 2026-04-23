@@ -29,6 +29,7 @@ model Restaurant {
   currency               String         @default("PKR")
   defaultLocale          String         @default("en")
   logoUrl                String?
+  bannerUrl              String?
   categories             MenuCategory[]
   menuItems              MenuItem[]
   tables                 Table[]
@@ -128,6 +129,9 @@ enum SubscriptionStatus {
 
 enum OrderStatus {
   PENDING
+  ACCEPTED
   COMPLETED
+  DELIVERED
+  REJECTED
   CANCELED
 }

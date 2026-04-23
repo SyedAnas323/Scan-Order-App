@@ -100,6 +100,7 @@ export type Restaurant = {
   currency: string;
   defaultLocale: Locale;
   logoUrl?: string;
+  bannerUrl?: string;
 };
 
 export type MenuCategory = {
@@ -138,7 +139,7 @@ export type RestaurantOwnerRequest = {
   createdAt: string;
 };
 
-export type OrderStatus = "pending" | "completed" | "canceled";
+export type OrderStatus = "pending" | "accepted" | "completed" | "delivered" | "rejected" | "canceled";
 
 export type AdminOrderItem = {
   id: string;

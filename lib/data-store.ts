@@ -128,6 +128,7 @@ function mapRestaurant(record: {
   currency: string;
   defaultLocale: string;
   logoUrl: string | null;
+  bannerUrl?: string | null;
 }): Restaurant {
   return {
     id: record.id,
@@ -138,7 +139,8 @@ function mapRestaurant(record: {
     whatsappNumber: record.whatsappNumber,
     currency: record.currency,
     defaultLocale: record.defaultLocale as Restaurant["defaultLocale"],
-    logoUrl: record.logoUrl ?? undefined
+    logoUrl: record.logoUrl ?? undefined,
+    bannerUrl: record.bannerUrl ?? undefined
   };
 }
 
@@ -308,7 +310,8 @@ export async function writeData(data: AppData) {
           whatsappNumber: restaurant.whatsappNumber,
           currency: restaurant.currency,
           defaultLocale: restaurant.defaultLocale,
-          logoUrl: restaurant.logoUrl
+          logoUrl: restaurant.logoUrl,
+          bannerUrl: restaurant.bannerUrl
         }
       });
     }
@@ -486,6 +489,46 @@ export async function authenticateUser(email: string, password: string) {
   }
 
   return user ? mapUser(user) : null;
+}
+
+export async function resetUserPasswordByEmail(email: string, password: string) {
+  const existing = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: existing.id },
+    data: { password },
+    include: {
+      restaurant: {
+        select: {
+          id: true
+        }
+      }
+    }
+  });
+
+  await logAdminActivity({
+    actorType: "restaurant_owner",
+    actorName: updated.name,
+    action: "password_reset",
+    details: `${updated.name} reset account password.`,
+    restaurantId: updated.restaurant?.id ?? undefined,
+    userId: updated.id
+  });
+
+  return mapUser(updated);
 }
 
 export async function hasSeenWelcome(userId: string) {
@@ -698,7 +741,7 @@ export async function createCustomerOrder(input: {
   return order ? mapAdminOrder(order) : null;
 }
 
-export async function updateOrderStatus(orderId: string, status: "pending" | "completed" | "canceled") {
+export async function updateOrderStatus(orderId: string, status: "pending" | "accepted" | "completed" | "delivered" | "rejected" | "canceled") {
   if (!prismaUnsafe.order) {
     return null;
   }
@@ -752,7 +795,7 @@ export async function getRestaurantOrders(restaurantId: string) {
 export async function updateRestaurantOrderStatus(
   restaurantId: string,
   orderId: string,
-  status: "completed" | "canceled",
+  status: "accepted" | "completed" | "delivered" | "rejected" | "canceled",
   actorName: string
 ) {
   if (!prismaUnsafe.order) {
@@ -809,7 +852,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
             createdAt: "desc"
           },
           take: 12
-        })
+        }).catch(() => [])
       : Promise.resolve([]),
     prismaUnsafe.activityLog
       ? prismaUnsafe.activityLog.findMany({
@@ -820,7 +863,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
             createdAt: "desc"
           },
           take: 20
-        })
+        }).catch(() => [])
       : Promise.resolve([])
   ]);
 
@@ -853,6 +896,27 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     onlineOwners,
     onlineCustomers
   };
+}
+
+export async function getAdminOrders(limit = 100) {
+  if (!prismaUnsafe.order) {
+    return [];
+  }
+
+  const safeLimit = Math.max(1, Math.min(limit, 500));
+  const orders = await prismaUnsafe.order.findMany({
+    include: {
+      restaurant: true,
+      table: true,
+      items: true
+    },
+    orderBy: {
+      createdAt: "desc"
+    },
+    take: safeLimit
+  }).catch(() => []);
+
+  return orders.map(mapAdminOrder);
 }
 
 export async function trackCustomerMenuVisit(input: {
@@ -1069,7 +1133,8 @@ const getCachedPublicRestaurants = unstable_cache(
         currency: true,
         whatsappNumber: true,
         defaultLocale: true,
-        logoUrl: true
+        logoUrl: true,
+        bannerUrl: true
       },
       orderBy: {
         name: "asc"
@@ -1165,7 +1230,7 @@ export async function addTable(restaurantId: string, input: Pick<Table, "name" |
 
 export async function updateRestaurantSettings(
   restaurantId: string,
-  input: Pick<Restaurant, "address" | "currency" | "whatsappNumber" | "defaultLocale" | "logoUrl">
+  input: Pick<Restaurant, "address" | "currency" | "whatsappNumber" | "defaultLocale" | "logoUrl" | "bannerUrl">
 ) {
   const restaurant = await prisma.restaurant.update({
     where: { id: restaurantId },
@@ -1174,7 +1239,8 @@ export async function updateRestaurantSettings(
       currency: input.currency,
       whatsappNumber: input.whatsappNumber,
       defaultLocale: input.defaultLocale,
-      logoUrl: input.logoUrl || null
+      logoUrl: input.logoUrl || null,
+      bannerUrl: input.bannerUrl || null
     }
   }).catch(() => null);
 

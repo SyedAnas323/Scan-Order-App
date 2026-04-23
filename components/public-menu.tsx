@@ -8,6 +8,18 @@ import { formatCurrency } from "@/lib/utils";
 
 type Cart = Record<string, number>;
 
+function showGlobalLoader() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("sofra:loader:show"));
+  }
+}
+
+function hideGlobalLoader() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("sofra:loader:hide"));
+  }
+}
+
 export function PublicMenu({
   locale,
   restaurant,
@@ -227,6 +239,7 @@ export function PublicMenu({
               });
               const whatsappLink = buildWhatsAppLink(restaurant.whatsappNumber, message);
               window.open(whatsappLink, "_blank", "noopener,noreferrer");
+              showGlobalLoader();
 
               fetch("/api/orders", {
                 method: "POST",
@@ -257,7 +270,8 @@ export function PublicMenu({
                 .catch((error: unknown) => {
                   const baseMessage = error instanceof Error ? error.message : uiText.fillDetails;
                   setFormError(`${baseMessage} WhatsApp sent, but dashboard sync failed.`);
-                });
+                })
+                .finally(() => hideGlobalLoader());
             }}
           >
             <input

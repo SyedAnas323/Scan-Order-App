@@ -14,6 +14,17 @@ export const loginSchema = z.object({
   password: z.string().min(6)
 });
 
+export const forgotPasswordSchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(6),
+    confirmPassword: z.string().min(6)
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"]
+  });
+
 export const categorySchema = z.object({
   name: z.string().min(2)
 });
@@ -48,7 +59,11 @@ export const settingsSchema = z.object({
   logoUrl: z
     .string()
     .optional()
-    .refine((value) => !value || value.startsWith("data:image/") || z.string().url().safeParse(value).success, "Invalid image URL")
+    .refine((value) => !value || value.startsWith("data:image/") || z.string().url().safeParse(value).success, "Invalid image URL"),
+  bannerUrl: z
+    .string()
+    .optional()
+    .refine((value) => !value || value.startsWith("data:image/") || z.string().url().safeParse(value).success, "Invalid banner image URL")
 });
 
 export const adminOwnerStatusSchema = z.object({
@@ -77,5 +92,5 @@ export const customerOrderSchema = z.object({
 
 export const restaurantOrderStatusSchema = z.object({
   orderId: z.string().min(2),
-  status: z.enum(["completed", "canceled"])
+  status: z.enum(["accepted", "completed", "delivered", "rejected", "canceled"])
 });

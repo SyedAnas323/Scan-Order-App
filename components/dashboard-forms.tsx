@@ -277,7 +277,7 @@ export function AddTableForm() {
 export function SettingsForm({
   restaurant
 }: {
-  restaurant: { address: string; currency: string; whatsappNumber: string; defaultLocale: string; logoUrl?: string };
+  restaurant: { address: string; currency: string; whatsappNumber: string; defaultLocale: string; logoUrl?: string; bannerUrl?: string };
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -288,11 +288,17 @@ export function SettingsForm({
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         startTransition(async () => {
-          const selectedFile = form.get("logoFile");
+          const selectedLogoFile = form.get("logoFile");
+          const selectedBannerFile = form.get("bannerFile");
           let logoUrl = String(form.get("logoUrl") ?? "").trim();
+          let bannerUrl = String(form.get("bannerUrl") ?? "").trim();
 
-          if (selectedFile instanceof File && selectedFile.size > 0) {
-            logoUrl = await fileToDataUrl(selectedFile);
+          if (selectedLogoFile instanceof File && selectedLogoFile.size > 0) {
+            logoUrl = await fileToDataUrl(selectedLogoFile);
+          }
+
+          if (selectedBannerFile instanceof File && selectedBannerFile.size > 0) {
+            bannerUrl = await fileToDataUrl(selectedBannerFile);
           }
 
           await requestJson("/api/dashboard/settings", {
@@ -300,7 +306,8 @@ export function SettingsForm({
             currency: form.get("currency"),
             whatsappNumber: form.get("whatsappNumber"),
             defaultLocale: form.get("defaultLocale"),
-            logoUrl
+            logoUrl,
+            bannerUrl
           });
           window.location.reload();
         });
@@ -321,7 +328,20 @@ export function SettingsForm({
         accept="image/*"
         className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 md:col-span-2"
       />
-      <p className="text-xs text-[var(--muted)] md:col-span-2">You can paste an image URL or upload from device. If both are provided, uploaded file is used.</p>
+      <p className="text-xs text-[var(--muted)] md:col-span-2">Logo: You can paste an image URL or choose from gallery/device. If both are provided, uploaded file is used.</p>
+      <input
+        defaultValue={restaurant.bannerUrl ?? ""}
+        name="bannerUrl"
+        placeholder="Banner URL (https://...)"
+        className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 md:col-span-2"
+      />
+      <input
+        name="bannerFile"
+        type="file"
+        accept="image/*"
+        className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 md:col-span-2"
+      />
+      <p className="text-xs text-[var(--muted)] md:col-span-2">Banner: You can paste an image URL or choose from gallery/device. If both are provided, uploaded file is used.</p>
       <select defaultValue={restaurant.defaultLocale} name="defaultLocale" className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 md:col-span-2">
         <option value="en">English</option>
         <option value="ur">Urdu</option>

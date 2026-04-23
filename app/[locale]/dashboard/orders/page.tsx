@@ -9,6 +9,27 @@ export default async function DashboardOrdersPage() {
   const orders = await getRestaurantOrders(session.restaurantId);
   const pendingCount = orders.filter((order: AdminOrder) => order.status === "pending").length;
 
+  const statusCounts: Record<AdminOrder["status"], number> = {
+    pending: 0,
+    accepted: 0,
+    completed: 0,
+    delivered: 0,
+    rejected: 0,
+    canceled: 0
+  };
+  for (const order of orders as AdminOrder[]) {
+    statusCounts[order.status] += 1;
+  }
+
+  const statusBadgeClass: Record<AdminOrder["status"], string> = {
+    pending: "border-amber-200 bg-amber-50 text-amber-700",
+    accepted: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    completed: "border-sky-200 bg-sky-50 text-sky-700",
+    delivered: "border-[var(--success)] bg-emerald-100 text-emerald-800",
+    rejected: "border-rose-200 bg-rose-50 text-rose-700",
+    canceled: "border-stone-300 bg-stone-100 text-stone-700"
+  };
+
   return (
     <div className="space-y-6">
       <section className="glass rounded-[2rem] p-6">
@@ -19,13 +40,33 @@ export default async function DashboardOrdersPage() {
           </div>
           <div className="pill">{pendingCount} pending</div>
         </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <div className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+            Pending: {statusCounts.pending}
+          </div>
+          <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+            Accepted: {statusCounts.accepted}
+          </div>
+          <div className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+            Completed: {statusCounts.completed}
+          </div>
+          <div className="rounded-full border border-[var(--success)] bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+            Delivered: {statusCounts.delivered}
+          </div>
+          <div className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+            Rejected: {statusCounts.rejected}
+          </div>
+          <div className="rounded-full border border-stone-300 bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">
+            Canceled: {statusCounts.canceled}
+          </div>
+        </div>
       </section>
 
       <section className="space-y-4">
         {orders.length ? (
-            orders.map((order: AdminOrder) => (
+          orders.map((order: AdminOrder) => (
             <article key={order.id} className="glass rounded-[1.8rem] p-5">
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
                 <div>
                   <div className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">Customer</div>
                   <div className="mt-1 font-semibold">{order.customerName}</div>
@@ -44,7 +85,15 @@ export default async function DashboardOrdersPage() {
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">Status</div>
-                  <div className="mt-1 font-semibold capitalize">{order.status}</div>
+                  <div className="mt-1">
+                    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase ${statusBadgeClass[order.status]}`}>
+                      {order.status}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">Time</div>
+                  <div className="mt-1 font-semibold">{new Date(order.createdAt).toLocaleString()}</div>
                 </div>
               </div>
 
@@ -63,7 +112,7 @@ export default async function DashboardOrdersPage() {
                 </div>
               </div>
 
-              {order.status === "pending" ? <RestaurantOrderActions orderId={order.id} /> : null}
+              <RestaurantOrderActions orderId={order.id} status={order.status} />
             </article>
           ))
         ) : (

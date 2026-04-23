@@ -20,7 +20,10 @@ export default async function OrderPage({ params }: { params: Promise<{ locale: 
                 name: restaurant.name,
                 slug: restaurant.slug,
                 address: restaurant.address,
-                logoUrl: restaurant.logoUrl
+                logoUrl: restaurant.logoUrl,
+                bannerUrl: restaurant.bannerUrl,
+                whatsappNumber: restaurant.whatsappNumber,
+                menuUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/${locale}/menu/${restaurant.slug}`
               }))}
             />
           ) : (
